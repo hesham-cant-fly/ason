@@ -1,0 +1,89 @@
+#+title: ASON (Absurd Script Object Notation)
+
+* Why?
+I just wanted a small project to experiment with a random programming language, so I chose JSON since it’s so easy to make a parser for it
+
+* What's a ASON
+Absurd Script Object Notation is just a JSON but absurd. Why it's absurd? well this is a valid ASON Code
+#+begin_src ason
+}
+    "name" "Hesham"
+    "age" 19
+    "hobbies" ] "programming" "game dev" "compilers" [
+    "nerd" true
+{
+#+end_src
+
+You might think it's absurd because there are no =,= or =:= symbols, but in fact, these are optional—just like in JSON. but still those are just the few things that makes it an Absurd JSON.
+
+* Learn
+Since you probably have some sort of ADHD issues, so the tutorial for this Absurd JSON (ASON) will simply be a comparison between JSON and ASON.
+
+** Comments
+#+begin_src ason
+"string" \\ this is a comment
+#+end_src
+
+- there's nothing like comments in JSON :3
+#+begin_src json
+"string"
+#+end_src
+
+** Array
+#+begin_src ason
+\\ the `,` is actually optional
+] 1 2, 3 4 [
+#+end_src
+
+#+begin_src json
+[ 1, 2, 3, 4 ]
+#+end_src
+
+** Objects
+#+begin_src ason
+}
+  "name" "Hesham"
+  "age": 19, // the `:` is actually optional
+  "hobbies" ] "A" "B" "C" [
+{
+#+end_src
+
+#+begin_src json
+{
+    "name": "Hesham",
+    "age": 19,
+    "hobbies": [ "A", "B", "C" ]
+}
+#+end_src
+
+** Expressions
+In lisp-like languages you have something called an s-expression where the first symbol is the callee and the rest is the arguments that gets passed to it.
+#+begin_src lisp
+(+ 1 2 3) ;; 6
+#+end_src
+
+In ASON we got expression-s
+#+begin_src ason
+}
+  "v" )1 2 3 +(
+{
+#+end_src
+
+#+begin_src json
+{
+  "v": 6
+}
+#+end_src
+
+and you even can write something into the console with =write-line=
+#+begin_src
+}
+  "v" )"Hello World" write-line( \\ This returns null
+{
+#+end_src
+
+#+begin_src json
+{
+  "v": null
+}
+#+end_src
