@@ -4,22 +4,38 @@ use crate::environment::Environment;
 use crate::token::{Token, TokenKind, TokenList};
 use crate::ast::{AsonExpr, AsonNumber, AsonValue};
 
-type ParserResult<T> = Result<T, String>;
+#[allow(dead_code)]
+#[derive(Debug)]
+pub struct ParserError {
+    msg: String,
+    file: String,
+    line: usize,
+    column: usize,
+}
+
+impl ParserError {
+    pub fn report(&self) {
+        eprintln!("Error {}:{}:{}: {}", self.file, self.line, self.column, self.msg);
+    }
+}
+
+pub type ParserResult<T> = Result<T, ParserError>;
 
 #[derive(Debug)]
 pub struct Parser<'a> {
     tokens: &'a TokenList<'a>,
     current: usize,
-    env: Environment
+    env: Environment,
+    file: String,
 }
 
 impl<'a> Parser<'a> {
-
-    pub fn new(tokens: &'a TokenList<'a>) -> Self {
+    pub fn new(tokens: &'a TokenList<'a>, file: String) -> Self {
         Parser {
             tokens,
+            file,
             current: 0,
-            env: Environment::new()
+            env: Environment::new(),
         }
     }
 
@@ -39,7 +55,7 @@ impl<'a> Parser<'a> {
             TokenKind::False => Ok(AsonValue::Boolean(false)),
             TokenKind::Null => Ok(AsonValue::Null),
 
-            _ => Err(format!("Unexpected token: {}", self.peek().lexem)),
+            _ => Err(self.report(format!("Unexpected token: {}", self.peek().lexem))),
         }
     }
 
@@ -53,7 +69,7 @@ impl<'a> Parser<'a> {
                     members.insert(key, self.parse_value()?);
                 },
                 TokenKind::Comma => continue,
-                _ => return Err(format!("Unexpected token: {}", self.peek().lexem))
+                _ => return Err(self.report(format!("Unexpected token: {}", self.peek().lexem)))
             }
         }
 
@@ -83,7 +99,10 @@ impl<'a> Parser<'a> {
 
     fn parse_expr_s(&mut self) -> ParserResult<AsonExpr> {
         let mut params = Vec::new();
-        while self.peek().kind != TokenKind::CloseExpr {
+        while !self.is_at_end() {
+            if self.peek().kind == TokenKind::CloseExpr {
+                break;
+            }
             let tok = self.advance();
             match tok.kind {
                 TokenKind::IntegerLiteral(v) => params.push(AsonExpr::Value(v.into())),
@@ -95,15 +114,20 @@ impl<'a> Parser<'a> {
                 TokenKind::Symbol(ref v) => params.push(AsonExpr::Symbol(v.to_string())),
                 TokenKind::OpenExpr => params.push(self.parse_expr_s()?),
 
-                _ => return Err(format!("Expected expression."))
+                _ => return Err(self.report(
+                    format!(
+                        "Unexpected token '{}'.\n  Expected a `number`, `string`, `boolean` (true/false), `null`, `symbol`, or a closing parenthesis `)`.",
+                        self.peek().lexem
+                    )
+                )),
             }
         }
-        _ = self.advance();
+        _ = self.consume(TokenKind::CloseExpr, "Expected closing expressios-s '('".into())?;
 
         if let Some(s) = params.pop() {
             match s {
                 AsonExpr::Symbol(s) => Ok(AsonExpr::ExprS(params, s)),
-                _ => Err(format!("help"))
+                _ => Err(self.report("help".into()))
             }
         } else {
             Ok(AsonExpr::None)
@@ -111,7 +135,11 @@ impl<'a> Parser<'a> {
     }
 
     fn peek(&self) -> &'a Token<'a> {
-        &self.tokens[self.current]
+        if self.is_at_end() {
+            &self.tokens[self.current - 1]
+        } else {
+            &self.tokens[self.current]
+        }
     }
 
     fn advance(&mut self) -> &'a Token<'a> {
@@ -121,12 +149,25 @@ impl<'a> Parser<'a> {
         &self.tokens[self.current - 1]
     }
 
-    #[allow(dead_code)]
-    fn consume(&mut self, _kind: TokenKind, _msg: &'static str) {
-        unimplemented!();
+    fn consume(&mut self, kind: TokenKind, msg: String) -> ParserResult<&'a Token<'a>> {
+        if self.peek().kind == kind {
+            return Ok(self.advance());
+        }
+
+        Err(self.report(msg))
     }
 
     fn is_at_end(&self) -> bool {
         self.current >= self.tokens.len()
+    }
+
+    fn report(&self, msg: String) -> ParserError {
+        let current = self.peek();
+        ParserError {
+            msg,
+            file: self.file.clone(),
+            line: current.line,
+            column: current.column,
+        }
     }
 }

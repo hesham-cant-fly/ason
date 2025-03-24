@@ -1,7 +1,12 @@
 use core::fmt;
-use std::{collections::HashMap, ops};
+use std::collections::HashMap;
+use std::ops;
 
-use crate::{environment::Environment, lexer::Lexer, parser::Parser, token::TokenList};
+use crate::token::TokenList;
+use crate::runtime::AsonFunction;
+use crate::parser::{Parser, ParserResult};
+use crate::lexer::Lexer;
+use crate::environment::Environment;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -116,8 +121,6 @@ impl AsonNumber {
     }
 }
 
-pub type AsonFunction = fn(Vec<AsonValue>) -> AsonValue;
-
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
 pub enum AsonValue {
@@ -170,7 +173,7 @@ impl AsonValue {
         }
     }
 
-    pub fn from_ason_string(s: &str) -> Result<AsonValue, String> {
+    pub fn from_ason_string(s: &str) -> ParserResult<AsonValue> {
         let tokens: *mut TokenList = &mut TokenList::new();
         {
             let mut lex = Lexer::new(s, unsafe{&mut *tokens});
@@ -178,7 +181,7 @@ impl AsonValue {
             // println!("{:#?}", unsafe{&*tokens});
         }
 
-        let mut parser = Parser::new(unsafe{&*tokens});
+        let mut parser = Parser::new(unsafe{&*tokens}, "test.json".into());
         parser.parse()
     }
 
@@ -322,4 +325,3 @@ impl<T: Into<AsonValue>> Into<AsonValue> for HashMap<String, T> {
         )
     }
 }
-
