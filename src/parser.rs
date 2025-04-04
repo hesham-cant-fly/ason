@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::environment::Environment;
+use crate::runtime::RuntimeError;
 use crate::token::{Token, TokenKind, TokenList};
 use crate::ast::{AsonExpr, AsonNumber, AsonValue};
 
@@ -15,7 +16,7 @@ pub struct ParserError {
 
 impl ParserError {
     pub fn report(&self) {
-        eprintln!("Error {}:{}:{}: {}", self.file, self.line, self.column, self.msg);
+        eprintln!("Error ./{}:{}:{}: {}", self.file, self.line, self.column, self.msg);
     }
 }
 
@@ -54,6 +55,13 @@ impl<'a> Parser<'a> {
             TokenKind::True => Ok(AsonValue::Boolean(true)),
             TokenKind::False => Ok(AsonValue::Boolean(false)),
             TokenKind::Null => Ok(AsonValue::Null),
+            TokenKind::Symbol(ref id) => {
+                if !self.env.symbols.contains_key(id) {
+                    return Err(self.report(format!("Undefined symbol: {}", id)));
+                }
+                let value = self.env.symbols.get(id).unwrap();
+                Ok(value.clone())
+            },
 
             _ => Err(self.report(format!("Unexpected token: {}", self.peek().lexem))),
         }
@@ -94,7 +102,18 @@ impl<'a> Parser<'a> {
 
     fn parse_expr(&mut self) -> ParserResult<AsonValue> {
         let expr = self.parse_expr_s()?;
-        Ok(expr.eval(&mut self.env))
+        match expr.eval(&mut self.env) {
+            Ok(v) => Ok(v),
+            Err(e) => {
+                let msg = match e {
+                    RuntimeError::NotEnoughArgument { given, expected } => format!("Not Enough Arguments given, got {} expected {}.", given, expected),
+                    RuntimeError::TooMuchArgument { given, expected } => format!("Too Much Arguments given, got {} expected {}.", given, expected),
+                    RuntimeError::UndefinedSymbol => "Undefined Symbol.".into(),
+                    RuntimeError::NotAFunction => "Not a function.".into(),
+                };
+                Err(self.report(msg))
+            }
+        }
     }
 
     fn parse_expr_s(&mut self) -> ParserResult<AsonExpr> {

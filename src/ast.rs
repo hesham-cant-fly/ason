@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::ops;
 
 use crate::token::TokenList;
-use crate::runtime::AsonFunction;
+use crate::runtime::{AsonFunction, RuntimeError};
 use crate::parser::{Parser, ParserResult};
 use crate::lexer::Lexer;
 use crate::environment::Environment;
@@ -18,20 +18,25 @@ pub enum AsonExpr {
 }
 
 impl AsonExpr {
-    pub fn eval(&self, env: &mut Environment) -> AsonValue {
+    pub fn eval(&self, env: &mut Environment) -> Result<AsonValue, RuntimeError> {
         match self {
-            AsonExpr::Value(ason_value) => (*ason_value).clone(),
-            AsonExpr::Symbol(_) => todo!(),
+            AsonExpr::Value(ason_value) => Ok((*ason_value).clone()),
             AsonExpr::ExprS(vec, callee) => self.eval_expr_s(vec, &callee, env),
-            AsonExpr::None => AsonValue::Null,
+            AsonExpr::None => Ok(AsonValue::Null),
+            AsonExpr::Symbol(id) => {
+                if !env.symbols.contains_key(id) {
+                    return Err(RuntimeError::UndefinedSymbol);
+                }
+                Ok(env.symbols[id].clone())
+            }
         }
     }
 
-    fn eval_expr_s(&self, params: &Vec<AsonExpr>, callee: &String, env: &mut Environment) -> AsonValue {
-        let args: Vec<AsonValue> = params
-            .iter()
-            .map(|e| e.eval(env))
-            .collect();
+    fn eval_expr_s(&self, params: &Vec<AsonExpr>, callee: &String, env: &mut Environment) -> Result<AsonValue, RuntimeError> {
+        let mut args = vec![];
+        for param in params {
+            args.push(param.eval(env)?);
+        }
 
         env.call_fn(&callee, args)
     }
@@ -173,6 +178,20 @@ impl AsonValue {
         }
     }
 
+    pub fn as_array(&self) -> Option<&Vec<AsonValue>> {
+        match self {
+            AsonValue::Array(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_number(&self) -> Option<&AsonNumber> {
+        match  self {
+            AsonValue::Number(v) => Some(v),
+            _ => None,
+        }
+    }
+
     pub fn from_ason_string(s: &str) -> ParserResult<AsonValue> {
         let tokens: *mut TokenList = &mut TokenList::new();
         {
@@ -204,6 +223,35 @@ impl AsonValue {
                 }
                 json.pop();
                 json.push(']');
+                json
+            },
+            AsonValue::String(s) => format!("\"{}\"", s),
+            AsonValue::Number(n) => n.to_string(),
+            AsonValue::Boolean(b) => b.to_string(),
+            AsonValue::Null => "null".to_string(),
+        }
+    }
+
+    // to_pretty_json method
+    pub fn to_pretty_json(&self, indent: usize) -> String {
+        match self {
+            AsonValue::Function(_) => "".into(),
+            AsonValue::Object(m) => {
+                let mut json = "{\n".to_string();
+                for (k, v) in m {
+                    json.push_str(&format!("{}\"{}\": {},\n", " ".repeat(indent), k, v.to_pretty_json(indent + 2)));
+                }
+                json.pop();
+                json.push_str("\n}");
+                json
+            },
+            AsonValue::Array(a) => {
+                let mut json = "[\n".to_string();
+                for v in a {
+                    json.push_str(&format!("{}{},\n", " ".repeat(indent), v.to_pretty_json(indent + 2)));
+                }
+                json.pop();
+                json.push_str("\n]");
                 json
             },
             AsonValue::String(s) => format!("\"{}\"", s),

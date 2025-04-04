@@ -4,9 +4,11 @@ use std::io::Read;
 
 use crate::ast::AsonValue;
 use crate::ast::AsonNumber;
+
 use crate::runtime;
 use crate::runtime::AsonExpectedArgs;
 use crate::runtime::AsonFunction;
+use crate::runtime::RuntimeError;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -30,6 +32,9 @@ impl Environment {
         result.define_function("write-line".into(), _write_line, AsonExpectedArgs::AtLeast(1));
         result.define_function("read-file-to-string".into(), _read_file_to_string, AsonExpectedArgs::Exact(1));
 
+        // Variables
+        result.define_function("defvar".into(), _define_var, AsonExpectedArgs::Exact(2));
+
         result
     }
 
@@ -39,23 +44,25 @@ impl Environment {
     }
 
     pub fn define_function(&mut self, name: String, callback: runtime::Callback, expected_args: AsonExpectedArgs) {
-        self.symbols.insert(name, AsonValue::Function(AsonFunction::new(callback, expected_args)));
+        self.symbols.insert(
+            name,
+            AsonValue::Function(AsonFunction::new(callback, expected_args))
+        );
     }
 
-    pub fn call_fn(&self, name: &str, args: Vec<AsonValue>) -> AsonValue {
-        let symbol = self.symbols.get(name).unwrap();
-        let x = match symbol {
-            AsonValue::Function(f) => f.call(args.as_slice()),
-            _ => panic!("Symbol is not a function"),
-        };
-        match x {
-            Ok(v) => v,
-            Err(v) => todo!("{:?}", v)
+    pub fn call_fn(&mut self, name: &str, args: Vec<AsonValue>) -> Result<AsonValue, RuntimeError> {
+        let symbol = self.symbols
+                         .get(name)
+                         .unwrap()
+            .clone();
+        match symbol {
+            AsonValue::Function(f) => f.call(args.as_slice(), self),
+            _ => Err(RuntimeError::NotAFunction),
         }
     }
 }
 
-fn _add(args: &[AsonValue]) -> AsonValue {
+fn _add(args: &[AsonValue], _env: &mut Environment) -> AsonValue {
     let mut result = AsonNumber::Integer(0);
     for v in args {
         if let AsonValue::Number(v) = v {
@@ -67,7 +74,7 @@ fn _add(args: &[AsonValue]) -> AsonValue {
     AsonValue::Number(result)
 }
 
-fn _sub(args: &[AsonValue]) -> AsonValue {
+fn _sub(args: &[AsonValue], _env: &mut Environment) -> AsonValue {
     let mut result = AsonNumber::Integer(0);
     for v in args {
         if let AsonValue::Number(v) = v {
@@ -79,8 +86,8 @@ fn _sub(args: &[AsonValue]) -> AsonValue {
     AsonValue::Number(result)
 }
 
-fn _mul(args: &[AsonValue]) -> AsonValue {
-    let mut result = AsonNumber::Integer(0);
+fn _mul(args: &[AsonValue], _env: &mut Environment) -> AsonValue {
+    let mut result = AsonNumber::Integer(1);
     for v in args {
         if let AsonValue::Number(v) = v {
             result = result * v.clone();
@@ -91,9 +98,15 @@ fn _mul(args: &[AsonValue]) -> AsonValue {
     AsonValue::Number(result)
 }
 
-fn _div(args: &[AsonValue]) -> AsonValue {
-    let mut result = AsonNumber::Integer(0);
-    for v in args {
+fn _div(args: &[AsonValue], _env: &mut Environment) -> AsonValue {
+    assert!(args.len() >= 2);
+
+    let first_value = &args[0];
+    let mut result = match first_value.as_number() {
+        Some(v) => v.clone(),
+        None => panic!("Cannot perform an arithmatic operation on a non number value."),
+    };
+    for v in &args[1..] {
         if let AsonValue::Number(v) = v {
             result = result / v.clone();
         } else {
@@ -103,7 +116,7 @@ fn _div(args: &[AsonValue]) -> AsonValue {
     AsonValue::Number(result)
 }
 
-fn _write_line(args: &[AsonValue]) -> AsonValue {
+fn _write_line(args: &[AsonValue], _env: &mut Environment) -> AsonValue {
     assert!(args.len() > 0);
 
     for v in args {
@@ -113,7 +126,7 @@ fn _write_line(args: &[AsonValue]) -> AsonValue {
     AsonValue::Null
 }
 
-fn _read_file_to_string(args: &[AsonValue]) -> AsonValue {
+fn _read_file_to_string(args: &[AsonValue], _env: &mut Environment) -> AsonValue {
     assert!(args.len() == 1);
 
     if let AsonValue::String(ref s) = args[0] {
@@ -129,4 +142,18 @@ fn _read_file_to_string(args: &[AsonValue]) -> AsonValue {
     } else {
         panic!("read-to-string expects a string argument.");
     }
+}
+
+fn _define_var(args: &[AsonValue], env: &mut Environment) -> AsonValue {
+    assert!(args.len() == 2);
+
+    let id = match &args[1] {
+        AsonValue::String(id) => id.clone(),
+        _ => panic!("Mispatch type"),
+    };
+    let value = args[0].clone();
+
+    env.add_constant(id, value.clone());
+
+    value
 }

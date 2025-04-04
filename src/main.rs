@@ -21,11 +21,10 @@ fn main() {
             exit(1);
         }
     };
-    println!("{}", value.to_json());
+    println!("{}", value.to_pretty_json(2));
 }
 
 fn read_file(path: &Path) -> String {
-    // Hello
     let mut f = File::open(path).unwrap();
     let mut text = String::new();
     _ = f.read_to_string(&mut text).unwrap();
