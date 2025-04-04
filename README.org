@@ -88,7 +88,7 @@ and you even can write something into the console with =write-line=
 }
 #+end_src
 ** Premitives
-#+begin_src json
+#+begin_src ason
 }
   \\ Arithmatics always returns a number
   "a" )2 2 +(
