@@ -13,7 +13,7 @@ mod environment;
 mod runtime;
 
 fn main() {
-    let content = read_file(&Path::new("./test.json"));
+    let content = read_file(&Path::new("./test.ason"));
     let value = match AsonValue::from_ason_string(&content) {
         Ok(v) => v,
         Err(e) => {
