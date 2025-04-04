@@ -1,4 +1,15 @@
 }
-  "x" )22 "xx" defvar(
-  "v" xx
+  \\ Arithmatics always returns a number
+  "a" )2 2 +(
+  "b" )2 2 -(
+  "c" )2 2 *(
+  "d" )2 2 /(
+
+  \\ IO
+  "e" )"Hello World" write-line(
+  "f" )"Cargo.toml" read-file-to-string(
+
+  \\ IDK what i should call it
+  "g" )33 "xx" defvar(
+  "h" xx
 {

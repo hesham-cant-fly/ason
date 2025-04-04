@@ -87,3 +87,34 @@ and you even can write something into the console with =write-line=
   "v": null
 }
 #+end_src
+** Premitives
+#+begin_src json
+}
+  \\ Arithmatics always returns a number
+  "a" )2 2 +(
+  "b" )2 2 -(
+  "c" )2 2 *(
+  "d" )2 2 /(
+
+  \\ IO
+  "e" )"Hello World" write-line(
+  "f" )"file.txt" read-file-to-string(
+
+  \\ IDK what i should call it
+  "g" )33 "xx" defvar(
+  "h" xx
+{
+#+end_src
+
+#+begin_src json
+{
+  "c": 4,
+  "d": 1,
+  "e": null,
+  "a": 4,
+  "f": "content",
+  "g": 33,
+  "b": -4,
+  "h": 33
+}
+#+end_src
