@@ -1,5 +1,7 @@
 #+title: ASON (Absurd Script Object Notation)
 
+* THIS IS THE ONLY CANONICAL AND STANDARD INTERPRETER IMPLEMENTETION. IF YOUS CANT DO THE THINGS THIS DOES, THEN YOU JUST SUCKS AT PROGRAMMING.
+
 * Why?
 I just wanted a small project to experiment with a random programming language, so I chose JSON since it’s so easy to make a parser for it
 
